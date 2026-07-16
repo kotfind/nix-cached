@@ -35,11 +35,10 @@
       inherit system;
       overlays = [libpsm2-fix-avx];
     };
-    libpsm2 = pkgs.libpsm2;
   in {
     overlays.default = libpsm2-fix-avx;
     packages.${system} = {
-      inherit libpsm2;
+      freecad = pkgs.freecad;
     };
   };
 }
