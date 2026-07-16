@@ -1,0 +1,13 @@
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: cachix/install-nix-action@v30
+      - uses: cachix/cachix-action@v17
+        with:
+          name: kotfind
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - run: nix build .#libpsm2 --print-build-logs
