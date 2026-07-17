@@ -10,13 +10,18 @@
     ...
   }: let
     tab = "\t";
-    libpsm2-fix-avx = final: prev: {
+
+    # Fix libpsm2 SIGILL on CPUs without AVX.
+    #
+    # **Issue**
+    # libpsm2 adds -mavx2/-mavx512f to BASECFLAGS globally. opa_time.c
+    # runs a constructor at dlopen time; if compiled with those flags
+    # it emits AVX instructions and crashes on CPUs without AVX.
+    #
+    # **Fix**
+    # Compile only opa_time.c with -mno-avx* overriding the AVX flags.
+    libpsm2-no-avx = final: prev: {
       libpsm2 = prev.libpsm2.overrideAttrs (old: {
-        # opa_time.c has a constructor that runs at dlopen time. If compiled
-        # with -mavx2/-mavx512f (which libpsm2 adds to BASECFLAGS for every
-        # source file), the compiler emits AVX instructions for stack init,
-        # causing SIGILL on CPUs without AVX. Fix: override AVX flags with
-        # -mno-avx* for just this file (placed after BASECFLAGS so -mno wins).
         postPatch =
           (old.postPatch or "")
           + ''
@@ -28,34 +33,43 @@
           '';
       });
     };
-  in
-    {
-      overlays.default = libpsm2-fix-avx;
-    }
-    // flake-utils.lib.eachDefaultSystem (system: let
-      pkgs = import nixpkgs {
-        inherit system;
-        overlays = [libpsm2-fix-avx];
-      };
 
-      freecad = pkgs.symlinkJoin {
-        name = "freecad-${pkgs.freecad.version}";
-        paths = with pkgs; [freecad mesa.drivers];
-        buildInputs = with pkgs; [makeWrapper];
+    # Fix FreeCAD "Could not initialize GLX" crash.
+    #
+    # **Issue**
+    # This flake pins nixos-24.11 version. The dynamic library
+    # versions might conflict with those of the host OS.
+    #
+    # **Fix**
+    # Bundle mesa.drivers into FreeCAD's closure.
+    freecad-mesa-bundle = final: prev: {
+      freecad = final.symlinkJoin {
+        name = "freecad-${prev.freecad.version}";
+        paths = with final; [prev.freecad mesa.drivers];
+        buildInputs = with final; [makeWrapper];
         postBuild = ''
           wrapProgram $out/bin/freecad \
             --set __GLX_VENDOR_LIBRARY_NAME mesa \
-            --prefix LD_LIBRARY_PATH : ${pkgs.mesa.drivers}/lib
+            --prefix LD_LIBRARY_PATH : ${final.mesa.drivers}/lib
 
           wrapProgram $out/bin/freecadcmd \
             --set __GLX_VENDOR_LIBRARY_NAME mesa \
-            --prefix LD_LIBRARY_PATH : ${pkgs.mesa.drivers}/lib
+            --prefix LD_LIBRARY_PATH : ${final.mesa.drivers}/lib
         '';
+      };
+    };
+  in
+    flake-utils.lib.eachDefaultSystem (system: let
+      pkgs = import nixpkgs {
+        inherit system;
+        overlays = [
+          libpsm2-no-avx
+          freecad-mesa-bundle
+        ];
       };
     in {
       packages = {
-        inherit (pkgs) libpsm2;
-        inherit freecad;
+        inherit (pkgs) freecad;
       };
     });
 }
