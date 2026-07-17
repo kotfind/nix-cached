@@ -45,16 +45,22 @@
     freecad-mesa-bundle = final: prev: {
       freecad = final.symlinkJoin {
         name = "freecad-${prev.freecad.version}";
-        paths = with final; [prev.freecad mesa.drivers];
+        paths = [
+          prev.freecad
+        ];
         buildInputs = with final; [makeWrapper];
         postBuild = ''
           wrapProgram $out/bin/freecad \
             --set __GLX_VENDOR_LIBRARY_NAME mesa \
-            --prefix LD_LIBRARY_PATH : ${final.mesa.drivers}/lib
+            --prefix LD_LIBRARY_PATH : ${final.mesa.drivers}/lib \
+            # for SheetMetal workbench plugin
+            --prefix PYTHONPATH : ${final.python3Packages.networkx}/${final.python3.sitePackages}
 
           wrapProgram $out/bin/freecadcmd \
             --set __GLX_VENDOR_LIBRARY_NAME mesa \
-            --prefix LD_LIBRARY_PATH : ${final.mesa.drivers}/lib
+            --prefix LD_LIBRARY_PATH : ${final.mesa.drivers}/lib \
+            # for SheetMetal workbench plugin
+            --prefix PYTHONPATH : ${final.python3Packages.networkx}/${final.python3.sitePackages}
         '';
       };
     };
