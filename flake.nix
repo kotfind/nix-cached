@@ -38,7 +38,23 @@
   in {
     overlays.default = libpsm2-fix-avx;
     packages.${system} = {
-      freecad = pkgs.freecad;
+      inherit
+        (pkgs)
+        libpsm2
+        ;
+      freecad = pkgs.symlinkJoin {
+        name = "freecad-${pkgs.freecad.version}";
+        paths = [pkgs.freecad pkgs.mesa.drivers];
+        buildInputs = [pkgs.makeWrapper];
+        postBuild = ''
+          wrapProgram $out/bin/freecad \
+            --set __GLX_VENDOR_LIBRARY_NAME mesa \
+            --prefix LD_LIBRARY_PATH : ${pkgs.mesa.drivers}/lib
+          wrapProgram $out/bin/freecadcmd \
+            --set __GLX_VENDOR_LIBRARY_NAME mesa \
+            --prefix LD_LIBRARY_PATH : ${pkgs.mesa.drivers}/lib
+        '';
+      };
     };
   };
 }
