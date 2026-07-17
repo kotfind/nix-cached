@@ -49,17 +49,16 @@
           prev.freecad
         ];
         buildInputs = with final; [makeWrapper];
+        # networkx for SheetMetal workbench plugin
         postBuild = ''
           wrapProgram $out/bin/freecad \
             --set __GLX_VENDOR_LIBRARY_NAME mesa \
             --prefix LD_LIBRARY_PATH : ${final.mesa.drivers}/lib \
-            # for SheetMetal workbench plugin
             --prefix PYTHONPATH : ${final.python3Packages.networkx}/${final.python3.sitePackages}
 
           wrapProgram $out/bin/freecadcmd \
             --set __GLX_VENDOR_LIBRARY_NAME mesa \
             --prefix LD_LIBRARY_PATH : ${final.mesa.drivers}/lib \
-            # for SheetMetal workbench plugin
             --prefix PYTHONPATH : ${final.python3Packages.networkx}/${final.python3.sitePackages}
         '';
       };
